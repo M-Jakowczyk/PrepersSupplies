@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             x:Class="PrepersSupplies.ScannerPage"
+             Title="Skaner kodów kreskowych">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="10">
+        
+        <!-- Nagłówek z instrukcją -->
+        <StackLayout Grid.Row="0" Padding="10" BackgroundColor="#2196F3">
+            <Label Text="📷 Zeskanuj kod kreskowy" 
+                   FontSize="20" 
+                   FontAttributes="Bold" 
+                   TextColor="White"
+                   HorizontalOptions="Center"/>
+            <Label Text="Skieruj kamerę na kod kreskowy produktu" 
+                   FontSize="14" 
+                   TextColor="White"
+                   HorizontalOptions="Center"/>
+        </StackLayout>
+
+        <!-- Czytnik kodów kreskowych -->
+        <zxing:CameraBarcodeReaderView 
+            x:Name="barcodeReader"
+            Grid.Row="1"
+            BarcodesDetected="OnBarcodesDetected"
+            IsTorchOn="False"
+            IsDetecting="True"
+            />
+
+        <!-- Przyciski akcji -->
+        <StackLayout Grid.Row="2" Padding="10" Spacing="10">
+            <Label x:Name="StatusLabel" 
+                   Text="Czekam na kod..." 
+                   FontSize="16" 
+                   HorizontalOptions="Center"
+                   TextColor="Gray"/>
+            
+            <Button x:Name="ToggleTorchBtn" 
+                    Text="🔦 Włącz latarkę" 
+                    Clicked="OnToggleTorch"
+                    BackgroundColor="#FFC107"/>
+            
+            <Button Text="❌ Anuluj" 
+                    Clicked="OnCancel"
+                    BackgroundColor="#F44336"
+                    TextColor="White"/>
+        </StackLayout>
+
+    </Grid>
+
+</ContentPage>
