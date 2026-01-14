@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 
 namespace PrepersSupplies.Models
 {
@@ -61,6 +62,7 @@ namespace PrepersSupplies.Models
     {
         private string _barcode = "";
         private string _name = "";
+        private ObservableCollection<ExpiryRecord> _expiryRecords = new();
 
         public string Barcode
         {
@@ -90,7 +92,55 @@ namespace PrepersSupplies.Models
         }
 
         // Kolekcja rekordów przydatności
-        public ObservableCollection<ExpiryRecord> ExpiryRecords { get; set; } = new();
+        public ObservableCollection<ExpiryRecord> ExpiryRecords
+        {
+            get => _expiryRecords;
+            set
+            {
+                if (_expiryRecords != value)
+                {
+                    // Odsubscribe ze starej kolekcji
+                    if (_expiryRecords != null)
+                    {
+                        _expiryRecords.CollectionChanged -= ExpiryRecords_CollectionChanged;
+                    }
+
+                    _expiryRecords = value;
+
+                    // Subscribe do nowej kolekcji
+                    if (_expiryRecords != null)
+                    {
+                        _expiryRecords.CollectionChanged += ExpiryRecords_CollectionChanged;
+                    }
+
+                    OnPropertyChanged();
+                    RefreshComputedProperties();
+                }
+            }
+        }
+
+        // Handler dla zmian w kolekcji ExpiryRecords
+        private void ExpiryRecords_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            Console.WriteLine($"📝 ExpiryRecords zmienił się! Wyzwalam odświeżenie...");
+            RefreshComputedProperties();
+        }
+
+        // Odświeżanie computed properties
+        private void RefreshComputedProperties()
+        {
+            OnPropertyChanged(nameof(NearestExpiryDate));
+            OnPropertyChanged(nameof(TotalQuantity));
+            OnPropertyChanged(nameof(DisplayText));
+            Console.WriteLine($"✅ Odświeżono: NearestExpiryDate={NearestExpiryDate}, TotalQuantity={TotalQuantity}");
+        }
+
+        // Konstruktor
+        public ProductItem()
+        {
+            // Subscribe do zmian w kolekcji
+            _expiryRecords.CollectionChanged += ExpiryRecords_CollectionChanged;
+        }
 
         // Najbliższa data przydatności
         public DateTime? NearestExpiryDate

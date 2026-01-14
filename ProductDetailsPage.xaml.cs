@@ -104,18 +104,18 @@ namespace PrepersSupplies
             {
                 existing.Quantity += quantity;
                 Console.WriteLine($"📝 Zaktualizowano rekord na {expiryDate:yyyy-MM-dd}, nowa ilość: {existing.Quantity}");
-                MainThread.BeginInvokeOnMainThread(() =>
+                MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    DisplayAlert("✅ Sukces", $"Zaktualizowano rekord\n{expiryDate:yyyy-MM-dd}: {existing.Quantity} szt.", "OK");
+                    await DisplayAlertAsync("✅ Sukces", $"Zaktualizowano rekord\n{expiryDate:yyyy-MM-dd}: {existing.Quantity} szt.", "OK");
                 });
             }
             else
             {
                 _product.ExpiryRecords.Add(new ExpiryRecord { ExpiryDate = expiryDate, Quantity = quantity });
                 Console.WriteLine($"➕ Dodano rekord: {expiryDate:yyyy-MM-dd} - {quantity} szt.");
-                MainThread.BeginInvokeOnMainThread(() =>
+                MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    DisplayAlert("✅ Sukces", $"Dodano nowy rekord\n{expiryDate:yyyy-MM-dd}: {quantity} szt.", "OK");
+                    await DisplayAlertAsync("✅ Sukces", $"Dodano nowy rekord\n{expiryDate:yyyy-MM-dd}: {quantity} szt.", "OK");
                 });
             }
 
@@ -131,7 +131,7 @@ namespace PrepersSupplies
             {
                 Console.WriteLine($"🗑️ Usuwanie rekordu: {record.ExpiryDate:yyyy-MM-dd}");
 
-                bool confirmed = await DisplayAlert(
+                bool confirmed = await DisplayAlertAsync(
                     "Potwierdź usunięcie",
                     $"Czy chcesz usunąć rekord na {record.ExpiryDate:yyyy-MM-dd} ({record.Quantity} szt.)?",
                     "Usuń",
@@ -161,19 +161,19 @@ namespace PrepersSupplies
             // Validacja
             if (string.IsNullOrWhiteSpace(_product.Name))
             {
-                await DisplayAlert("Błąd", "Nazwa produktu nie może być pusta", "OK");
+                await DisplayAlertAsync("Błąd", "Nazwa produktu nie może być pusta", "OK");
                 return;
             }
 
             if (_product.ExpiryRecords.Count == 0)
             {
-                await DisplayAlert("Błąd", "Dodaj co najmniej jeden rekord przydatności", "OK");
+                await DisplayAlertAsync("Błąd", "Dodaj co najmniej jeden rekord przydatności", "OK");
                 return;
             }
 
             if (_product.TotalQuantity == 0)
             {
-                await DisplayAlert("Błąd", "Całkowita ilość musi być większa od zera", "OK");
+                await DisplayAlertAsync("Błąd", "Całkowita ilość musi być większa od zera", "OK");
                 return;
             }
 
@@ -188,3 +188,4 @@ namespace PrepersSupplies
         }
     }
 }
+

@@ -149,23 +149,6 @@
                                     </Grid>
                                 </StackLayout>
 
-                                <!-- Preview dodawanego rekordu -->
-                                <Frame Padding="10" BackgroundColor="White" BorderColor="#E0E0E0" CornerRadius="6">
-                                    <StackLayout Spacing="3">
-                                        <Label Text="Podgląd:" 
-                                               FontSize="11" 
-                                               TextColor="Gray"/>
-                                        <Label Text="{Binding NewExpiryDate, StringFormat='📅 {0:yyyy-MM-dd}'}" 
-                                               FontSize="12" 
-                                               FontAttributes="Bold"
-                                               TextColor="#D32F2F"/>
-                                        <Label Text="{Binding NewQuantity, StringFormat='📦 {0} szt.'}" 
-                                               FontSize="12" 
-                                               FontAttributes="Bold"
-                                               TextColor="#388E3C"/>
-                                    </StackLayout>
-                                </Frame>
-
                                 <!-- Przycisk dodawania -->
                                 <Button Text="✅ Dodaj rekord" 
                                         Clicked="OnConfirmAddExpiryRecordClicked"
