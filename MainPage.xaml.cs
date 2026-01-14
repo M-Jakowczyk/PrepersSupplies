@@ -10,6 +10,10 @@ namespace PrepersSupplies
     {
         // Używamy ObservableCollection, żeby UI odświeżało się samo
         public ObservableCollection<ProductItem> ScannedCodes { get; set; } = new();
+        
+        // Przechowujemy wszystkie produkty dla filtrowania
+        private List<ProductItem> _allProducts = new();
+        
         private readonly HttpClient _httpClient = new(); // Klient HTTP
         private string _filePath = Path.Combine(FileSystem.AppDataDirectory, "products.csv");
         private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -41,61 +45,78 @@ namespace PrepersSupplies
             Console.WriteLine($"📱 Otrzymano zeskanowany kod: {code}");
 
             // Sprawdzamy po kodzie kreskowym w naszej liście obiektów
-            var alreadyExists = ScannedCodes.Any(x => x.Barcode == code);
+            var existingProduct = _allProducts.FirstOrDefault(x => x.Barcode == code);
 
-            if (!alreadyExists)
+            if (existingProduct == null)
             {
                 await Dispatcher.DispatchAsync(async () =>
                 {
-                    // Sprawdź ponownie (double-check)
-                    if (ScannedCodes.Any(x => x.Barcode == code)) 
-                    {
-                        LastScannedLabel.Text = $"🔄 Już zeskanowany: {code}";
-                        LastScannedLabel.TextColor = Colors.Blue;
-                        return;
-                    }
-
                     // Wyświetl ostatnio zeskanowany kod
                     LastScannedLabel.Text = $"⏳ Przetwarzam: {code}";
                     LastScannedLabel.TextColor = Colors.Orange;
 
                     // 1. Dodajemy produkt tymczasowy
                     var newItem = new ProductItem { Barcode = code, Name = "Ładowanie..." };
-                    ScannedCodes.Insert(0, newItem); // Dodaj na początek listy
+                    ScannedCodes.Insert(0, newItem);
+                    _allProducts.Insert(0, newItem);
                     Console.WriteLine($"✅ Dodano produkt do listy: {code}");
 
-                    // Zapisujemy od razu (żeby kod nie zginął w razie błędu API)
+                    // Zapisujemy od razu
                     SaveProducts();
 
                     // 2. Pobieramy nazwę z API
                     string productName = await GetProductName(code);
 
-                    // 3. Aktualizujemy obiekt - INotifyPropertyChanged automatycznie odświeży UI
+                    // 3. Aktualizujemy obiekt
                     if (!string.IsNullOrEmpty(productName) && productName != "Nieznany produkt")
                     {
                         newItem.Name = productName;
                         Console.WriteLine($"✅ Znaleziono produkt: {productName}");
-                        LastScannedLabel.Text = $"✅ Dodano: {productName}";
+                        LastScannedLabel.Text = $"✅ {productName}";
                         LastScannedLabel.TextColor = Colors.Green;
-                        SaveProducts(); // Zapisujemy zaktualizowaną nazwę
                     }
                     else
                     {
                         newItem.Name = "Nieznany produkt";
                         Console.WriteLine($"⚠️ Nie znaleziono produktu dla kodu: {code}");
-                        LastScannedLabel.Text = $"⚠️ Nieznany produkt: {code}";
+                        LastScannedLabel.Text = $"⚠️ Nieznany produkt";
                         LastScannedLabel.TextColor = Colors.Red;
-                        SaveProducts();
                     }
+
+                    SaveProducts();
+
+                    // 4. Otwórz formularz szczegółów produktu
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        var detailsPage = new ProductDetailsPage(newItem, (updatedProduct) =>
+                        {
+                            Console.WriteLine($"💾 Produkt zaktualizowany: {updatedProduct.Name}");
+                            SaveProducts();
+                            LastScannedLabel.Text = $"✅ Zapisano: {updatedProduct.Name}";
+                            LastScannedLabel.TextColor = Colors.Green;
+                        });
+
+                        await Navigation.PushModalAsync(detailsPage);
+                    });
                 });
             }
             else
             {
-                Console.WriteLine($"⚠️ Kod już istnieje w liście: {code}");
-                await Dispatcher.DispatchAsync(() =>
+                Console.WriteLine($"ℹ️ Produkt już istnieje: {existingProduct.Name}");
+                await Dispatcher.DispatchAsync(async () =>
                 {
-                    LastScannedLabel.Text = $"🔄 Już zeskanowany: {code}";
+                    LastScannedLabel.Text = $"ℹ️ Produkt już istnieje";
                     LastScannedLabel.TextColor = Colors.Blue;
+
+                    // Otwórz formularz aby edytować istniejący produkt
+                    var detailsPage = new ProductDetailsPage(existingProduct, (updatedProduct) =>
+                    {
+                        Console.WriteLine($"💾 Produkt zaktualizowany: {updatedProduct.Name}");
+                        SaveProducts();
+                        RefreshFilteredList();
+                    });
+
+                    await Navigation.PushModalAsync(detailsPage);
                 });
             }
         }
@@ -117,7 +138,11 @@ namespace PrepersSupplies
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
                     var item = ProductItem.FromCsvLine(line);
-                    if (item != null) ScannedCodes.Add(item);
+                    if (item != null)
+                    {
+                        ScannedCodes.Add(item);
+                        _allProducts.Add(item);
+                    }
                 }
                 
                 Console.WriteLine($"✅ Wczytano {ScannedCodes.Count} produktów");
@@ -142,6 +167,123 @@ namespace PrepersSupplies
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Błąd zapisywania produktów: {ex.Message}");
+            }
+        }
+
+        private async void OnEditProductClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is ProductItem product)
+            {
+                Console.WriteLine($"✏️ Otwieranie edycji produktu: {product.Name}");
+                
+                var detailsPage = new ProductDetailsPage(product, (updatedProduct) =>
+                {
+                    Console.WriteLine($"💾 Produkt zaktualizowany: {updatedProduct.Name}");
+                    SaveProducts();
+                    RefreshFilteredList(); // Odświeżamy listę filtrowaną
+                });
+
+                await Navigation.PushModalAsync(detailsPage);
+            }
+        }
+
+        private async void OnDeleteProductClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is ProductItem product)
+            {
+                Console.WriteLine($"🗑️ Usuwanie produktu: {product.Name}");
+                
+                bool result = await DisplayAlert("Potwierdź usunięcie", 
+                    $"Czy na pewno chcesz usunąć produkt \"{product.Name}\"?", 
+                    "Usuń", "Anuluj");
+
+                if (result)
+                {
+                    ScannedCodes.Remove(product);
+                    _allProducts.Remove(product);
+                    SaveProducts();
+                    LastScannedLabel.Text = $"✅ Usunięto: {product.Name}";
+                    LastScannedLabel.TextColor = Colors.Green;
+                    Console.WriteLine($"✅ Produkt usunięty: {product.Name}");
+                }
+            }
+        }
+
+        // Wyszukiwanie produktów
+        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            RefreshFilteredList();
+        }
+
+        private void OnSearchButtonPressed(object sender, EventArgs e)
+        {
+            RefreshFilteredList();
+        }
+
+        // Pokaż wszystkie produkty
+        private void OnShowAllClicked(object sender, EventArgs e)
+        {
+            SearchBar.Text = "";
+            RefreshFilteredList();
+            Console.WriteLine("🔄 Pokazuję wszystkie produkty");
+        }
+
+        // Pokaż produkty ważne w ciągu 7 dni
+        private void OnShowExpiringSoonClicked(object sender, EventArgs e)
+        {
+            Console.WriteLine("📅 Filtrowanie: produkty ważne w 7 dni");
+            
+            var now = DateTime.Now;
+            var sevenDaysLater = now.AddDays(7);
+            
+            ScannedCodes.Clear();
+            
+            foreach (var product in _allProducts
+                .Where(p => p.NearestExpiryDate.HasValue && 
+                            //p.NearestExpiryDate >= now && 
+                            p.NearestExpiryDate <= sevenDaysLater)
+                .OrderBy(p => p.NearestExpiryDate))
+            {
+                ScannedCodes.Add(product);
+            }
+
+            LastScannedLabel.Text = $"📅 Produkty ważne w ciągu 7 dni: {ScannedCodes.Count}";
+            LastScannedLabel.TextColor = Colors.Orange;
+            Console.WriteLine($"✅ Znaleziono {ScannedCodes.Count} produktów");
+        }
+
+        // Odświeżanie listy filtrowanej na podstawie wyszukiwania
+        private void RefreshFilteredList()
+        {
+            var searchText = SearchBar?.Text?.ToLower() ?? "";
+            
+            ScannedCodes.Clear();
+
+            if (string.IsNullOrEmpty(searchText))
+            {
+                // Pokaż wszystko
+                foreach (var product in _allProducts)
+                {
+                    ScannedCodes.Add(product);
+                }
+                Console.WriteLine($"🔄 Pokazuję wszystkie {_allProducts.Count} produkty");
+            }
+            else
+            {
+                // Filtruj po nazwie lub kodzie
+                var filtered = _allProducts
+                    .Where(p => p.Name.ToLower().Contains(searchText) || 
+                                p.Barcode.ToLower().Contains(searchText))
+                    .ToList();
+
+                foreach (var product in filtered)
+                {
+                    ScannedCodes.Add(product);
+                }
+
+                LastScannedLabel.Text = $"🔍 Znaleziono: {filtered.Count} produktów";
+                LastScannedLabel.TextColor = Colors.Blue;
+                Console.WriteLine($"🔍 Znaleziono {filtered.Count} produktów dla: '{searchText}'");
             }
         }
 
