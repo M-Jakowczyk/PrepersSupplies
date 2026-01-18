@@ -1,4 +1,5 @@
 using PrepersSupplies.Models;
+using PrepersSupplies.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -8,6 +9,7 @@ namespace PrepersSupplies
     {
         private ProductItem _product;
         private Action<ProductItem>? _onSave;
+        private OcrDateService _ocrDateService;
 
         // ViewModel dla bindowania
         public class ProductDetailsViewModel : INotifyPropertyChanged
@@ -66,6 +68,7 @@ namespace PrepersSupplies
             InitializeComponent();
             _product = product;
             _onSave = onSave;
+            _ocrDateService = new OcrDateService();
 
             _viewModel = new ProductDetailsViewModel(product);
             BindingContext = _viewModel;
@@ -77,7 +80,7 @@ namespace PrepersSupplies
         private void OnIncreaseQuantityClicked(object sender, EventArgs e)
         {
             _viewModel.NewQuantity++;
-            Console.WriteLine($"➕ Ilość zwiększona na: {_viewModel.NewQuantity}");
+            Console.WriteLine($"➕ Ilość zwięksona na: {_viewModel.NewQuantity}");
         }
 
         // Przycisk zmniejszenia ilości
@@ -90,7 +93,7 @@ namespace PrepersSupplies
             }
         }
 
-        // Potwierdzenie dodania rekordu
+        // Potwierdzenie dodania rekordu przydatności
         private void OnConfirmAddExpiryRecordClicked(object sender, EventArgs e)
         {
             Console.WriteLine("✅ Dodawanie nowego rekordu przydatności");
@@ -143,6 +146,166 @@ namespace PrepersSupplies
                     _product.ExpiryRecords.Remove(record);
                     Console.WriteLine($"✅ Usunięto rekord: {record.ExpiryDate:yyyy-MM-dd}");
                 }
+            }
+        }
+
+        // Zmniejszenie ilości w rekordzie przydatności
+        private async void OnDecreaseRecordQuantityClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is ExpiryRecord record)
+            {
+                Console.WriteLine($"➖ Zmniejszanie ilości w rekordzie: {record.ExpiryDate:yyyy-MM-dd}");
+
+                if (record.Quantity > 1)
+                {
+                    record.Quantity--;
+                    Console.WriteLine($"✅ Nowa ilość: {record.Quantity}");
+                }
+                else
+                {
+                    // Jeśli ilość spadnie do 0, zapytaj czy usunąć rekord
+                    bool confirmed = await DisplayAlertAsync(
+                        "Usunąć rekord?",
+                        $"Ilość spadnie do 0. Czy usunąć rekord na {record.ExpiryDate:yyyy-MM-dd}?",
+                        "Usuń",
+                        "Anuluj"
+                    );
+
+                    if (confirmed)
+                    {
+                        _product.ExpiryRecords.Remove(record);
+                        Console.WriteLine($"✅ Usunięto rekord: {record.ExpiryDate:yyyy-MM-dd}");
+                    }
+                }
+            }
+        }
+
+        // Zwiększenie ilości w rekordzie przydatności
+        private void OnIncreaseRecordQuantityClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.CommandParameter is ExpiryRecord record)
+            {
+                Console.WriteLine($"➕ Zwiększanie ilości w rekordzie: {record.ExpiryDate:yyyy-MM-dd}");
+                record.Quantity++;
+                Console.WriteLine($"✅ Nowa ilość: {record.Quantity}");
+            }
+        }
+
+        // Skanowanie daty przydatności przy pomocy OCR
+        private async void OnScanDateClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                Console.WriteLine("📷 Rozpoczynam skanowanie daty...");
+
+                // Sprawdź uprawnienia do aparatu
+                var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
+                if (cameraStatus != PermissionStatus.Granted)
+                {
+                    cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
+                    if (cameraStatus != PermissionStatus.Granted)
+                    {
+                        await DisplayAlert("Błąd", "Brak uprawnień do aparatu", "OK");
+                        return;
+                    }
+                }
+
+                // Pokaż opcje: zrób zdjęcie lub wybierz z galerii
+                var action = await DisplayActionSheet(
+                    "Skanuj datę przydatności",
+                    "Anuluj",
+                    null,
+                    "📷 Zrób zdjęcie",
+                    "🖼️ Wybierz z galerii"
+                );
+
+                if (action == "Anuluj" || action == null)
+                    return;
+
+                FileResult? photo = null;
+
+                if (action == "📷 Zrób zdjęcie")
+                {
+                    // Zrób zdjęcie
+                    photo = await MediaPicker.CapturePhotoAsync(new MediaPickerOptions
+                    {
+                        Title = "Zrób zdjęcie daty przydatności"
+                    });
+                }
+                else if (action == "🖼️ Wybierz z galerii")
+                {
+                    // Wybierz zdjęcie z galerii
+                    photo = await MediaPicker.PickPhotoAsync(new MediaPickerOptions
+                    {
+                        Title = "Wybierz zdjęcie daty przydatności"
+                    });
+                }
+
+                if (photo == null)
+                {
+                    Console.WriteLine("❌ Nie wybrano zdjęcia");
+                    return;
+                }
+
+                // Skopiuj zdjęcie do katalogu tymczasowego
+                var newFile = Path.Combine(FileSystem.CacheDirectory, photo.FileName);
+                using (var stream = await photo.OpenReadAsync())
+                using (var newStream = File.OpenWrite(newFile))
+                {
+                    await stream.CopyToAsync(newStream);
+                }
+
+                Console.WriteLine($"✅ Zdjęcie zapisane: {newFile}");
+
+                // Pokaż wskaźnik ładowania
+                var loadingTask = DisplayAlert("Przetwarzanie", "Rozpoznawanie daty z zdjęcia...", "OK");
+
+                // Rozpoznaj datę z OCR
+                var (success, date, rawText) = await _ocrDateService.RecognizeDateFromImageAsync(newFile);
+
+                // Zamknij wskaźnik ładowania
+                try { await loadingTask; } catch { }
+
+                if (success && date.HasValue)
+                {
+                    // Ustaw rozpoznaną datę
+                    _viewModel.NewExpiryDate = date.Value;
+                    
+                    await DisplayAlert(
+                        "✅ Sukces",
+                        $"Rozpoznano datę: {date.Value:yyyy-MM-dd}\n\nMożesz ją zmienić ręcznie jeśli jest niepoprawna.",
+                        "OK"
+                    );
+                    
+                    Console.WriteLine($"✅ Ustawiono datę: {date.Value:yyyy-MM-dd}");
+                }
+                else
+                {
+                    // Nie udało się rozpoznać daty
+                    var message = string.IsNullOrWhiteSpace(rawText)
+                        ? "Nie udało się rozpoznać tekstu na zdjęciu."
+                        : $"Nie znaleziono daty w rozpoznanym tekście:\n\n{rawText.Substring(0, Math.Min(200, rawText.Length))}...";
+
+                    await DisplayAlert(
+                        "⚠️ Nie rozpoznano daty",
+                        $"{message}\n\nWpisz datę ręcznie.",
+                        "OK"
+                    );
+                    
+                    Console.WriteLine("⚠️ Nie rozpoznano daty");
+                }
+
+                // Usuń tymczasowy plik
+                try { File.Delete(newFile); } catch { }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Błąd podczas skanowania: {ex.Message}");
+                await DisplayAlert(
+                    "❌ Błąd",
+                    $"Wystąpił błąd podczas skanowania:\n{ex.Message}\n\nWpisz datę ręcznie.",
+                    "OK"
+                );
             }
         }
 

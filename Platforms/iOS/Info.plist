@@ -29,6 +29,10 @@
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Ta aplikacja wymaga dostępu do kamery aby skanować kody kreskowe produktów.</string>
+	<string>Ta aplikacja wymaga dostępu do kamery aby skanować kody kreskowe produktów i daty przydatności.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ta aplikacja wymaga dostępu do galerii zdjęć aby odczytać daty przydatności z obrazów.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ta aplikacja wymaga dostępu do zapisywania zdjęć w galerii.</string>
 </dict>
 </plist>

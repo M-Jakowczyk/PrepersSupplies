@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using ZXing.Net.Maui.Controls;
+using Plugin.Maui.OCR;
 
 namespace PrepersSupplies
 {
@@ -11,6 +12,7 @@ namespace PrepersSupplies
             builder
                 .UseMauiApp<App>()
                 .UseBarcodeReader()
+                .UseOcr()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

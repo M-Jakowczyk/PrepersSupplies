@@ -43,7 +43,7 @@
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
                                     <Frame Margin="0,5" Padding="10" BackgroundColor="#F5F5F5" BorderColor="#E0E0E0" CornerRadius="6">
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="5">
                                             <!-- Dane rekordu -->
                                             <StackLayout Grid.Column="0" Spacing="5">
                                                 <Label Text="{Binding ExpiryDate, StringFormat='📅 {0:yyyy-MM-dd}'}" 
@@ -55,17 +55,45 @@
                                                        TextColor="#388E3C"/>
                                             </StackLayout>
 
-                                            <!-- Przycisk usuwania -->
+                                            <!-- Przycisk zmniejszenia ilości -->
                                             <Button Grid.Column="1" 
+                                                    Text="−" 
+                                                    Clicked="OnDecreaseRecordQuantityClicked"
+                                                    BackgroundColor="#FFC107"
+                                                    TextColor="Black"
+                                                    FontSize="18"
+                                                    Padding="5"
+                                                    WidthRequest="40"
+                                                    HeightRequest="40"
+                                                    CornerRadius="20"
+                                                    FontAttributes="Bold"
+                                                    CommandParameter="{Binding .}"/>
+
+                                            <!-- Przycisk zwiększenia ilości -->
+                                            <Button Grid.Column="2" 
+                                                    Text="+" 
+                                                    Clicked="OnIncreaseRecordQuantityClicked"
+                                                    BackgroundColor="#4CAF50"
+                                                    TextColor="White"
+                                                    FontSize="18"
+                                                    Padding="5"
+                                                    WidthRequest="40"
+                                                    HeightRequest="40"
+                                                    CornerRadius="20"
+                                                    FontAttributes="Bold"
+                                                    CommandParameter="{Binding .}"/>
+
+                                            <!-- Przycisk usuwania -->
+                                            <Button Grid.Column="3" 
                                                     Text="🗑️" 
                                                     Clicked="OnDeleteExpiryRecordClicked"
                                                     BackgroundColor="#F44336"
                                                     TextColor="White"
                                                     FontSize="14"
                                                     Padding="5"
-                                                    WidthRequest="45"
-                                                    HeightRequest="45"
-                                                    CornerRadius="22"
+                                                    WidthRequest="40"
+                                                    HeightRequest="40"
+                                                    CornerRadius="20"
                                                     CommandParameter="{Binding .}"/>
                                         </Grid>
                                     </Frame>
@@ -87,12 +115,29 @@
                                            FontSize="12" 
                                            TextColor="#333"
                                            FontAttributes="Bold"/>
-                                    <DatePicker x:Name="ExpiryDatePicker"
-                                                Date="{Binding NewExpiryDate}"
-                                                Format="yyyy-MM-dd"
-                                                FontSize="13"
-                                                BackgroundColor="White"
-                                                Margin="0,2"/>
+                                    
+                                    <!-- Przyciski skanowania i wyboru daty -->
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <DatePicker Grid.Column="0"
+                                                    x:Name="ExpiryDatePicker"
+                                                    Date="{Binding NewExpiryDate}"
+                                                    Format="yyyy-MM-dd"
+                                                    FontSize="13"
+                                                    BackgroundColor="White"
+                                                    Margin="0,2"/>
+                                        
+                                        <Button Grid.Column="1"
+                                                Text="📷"
+                                                Clicked="OnScanDateClicked"
+                                                BackgroundColor="#2196F3"
+                                                TextColor="White"
+                                                FontSize="18"
+                                                Padding="8"
+                                                WidthRequest="50"
+                                                HeightRequest="50"
+                                                CornerRadius="25"
+                                                ToolTipProperties.Text="Skanuj datę przydatności"/>
+                                    </Grid>
                                 </StackLayout>
 
                                 <!-- Wybór ilości -->
