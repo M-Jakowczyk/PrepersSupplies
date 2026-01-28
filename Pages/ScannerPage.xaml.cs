@@ -1,6 +1,6 @@
 using ZXing.Net.Maui;
 
-namespace PrepersSupplies
+namespace PrepersSupplies.Pages
 {
     public partial class ScannerPage : ContentPage
     {

@@ -3,7 +3,7 @@ using PrepersSupplies.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace PrepersSupplies
+namespace PrepersSupplies.Pages
 {
     public partial class ProductDetailsPage : ContentPage
     {
@@ -205,13 +205,13 @@ namespace PrepersSupplies
                     cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
                     if (cameraStatus != PermissionStatus.Granted)
                     {
-                        await DisplayAlert("Błąd", "Brak uprawnień do aparatu", "OK");
+                        await DisplayAlertAsync("Błąd", "Brak uprawnień do aparatu", "OK");
                         return;
                     }
                 }
 
                 // Pokaż opcje: zrób zdjęcie lub wybierz z galerii
-                var action = await DisplayActionSheet(
+                var action = await DisplayActionSheetAsync(
                     "Skanuj datę przydatności",
                     "Anuluj",
                     null,
@@ -258,7 +258,7 @@ namespace PrepersSupplies
                 Console.WriteLine($"✅ Zdjęcie zapisane: {newFile}");
 
                 // Pokaż wskaźnik ładowania
-                var loadingTask = DisplayAlert("Przetwarzanie", "Rozpoznawanie daty z zdjęcia...", "OK");
+                var loadingTask = DisplayAlertAsync("Przetwarzanie", "Rozpoznawanie daty z zdjęcia...", "OK");
 
                 // Rozpoznaj datę z OCR
                 var (success, date, rawText) = await _ocrDateService.RecognizeDateFromImageAsync(newFile);
@@ -271,7 +271,7 @@ namespace PrepersSupplies
                     // Ustaw rozpoznaną datę
                     _viewModel.NewExpiryDate = date.Value;
                     
-                    await DisplayAlert(
+                    await DisplayAlertAsync(
                         "✅ Sukces",
                         $"Rozpoznano datę: {date.Value:yyyy-MM-dd}\n\nMożesz ją zmienić ręcznie jeśli jest niepoprawna.",
                         "OK"
@@ -286,7 +286,7 @@ namespace PrepersSupplies
                         ? "Nie udało się rozpoznać tekstu na zdjęciu."
                         : $"Nie znaleziono daty w rozpoznanym tekście:\n\n{rawText.Substring(0, Math.Min(200, rawText.Length))}...";
 
-                    await DisplayAlert(
+                    await DisplayAlertAsync(
                         "⚠️ Nie rozpoznano daty",
                         $"{message}\n\nWpisz datę ręcznie.",
                         "OK"
@@ -301,7 +301,7 @@ namespace PrepersSupplies
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Błąd podczas skanowania: {ex.Message}");
-                await DisplayAlert(
+                await DisplayAlertAsync(
                     "❌ Błąd",
                     $"Wystąpił błąd podczas skanowania:\n{ex.Message}\n\nWpisz datę ręcznie.",
                     "OK"
